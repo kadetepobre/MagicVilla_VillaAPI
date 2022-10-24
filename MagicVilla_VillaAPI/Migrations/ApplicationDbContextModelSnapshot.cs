@@ -31,7 +31,6 @@ namespace MagicVilla_VillaAPI.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
                     b.Property<string>("Amenity")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("AreaInSqFt")
@@ -41,11 +40,9 @@ namespace MagicVilla_VillaAPI.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Details")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ImageURL")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
@@ -71,7 +68,7 @@ namespace MagicVilla_VillaAPI.Migrations
                             Id = 1,
                             Amenity = "",
                             AreaInSqFt = 550,
-                            CreatedDate = new DateTime(2022, 10, 9, 22, 31, 38, 496, DateTimeKind.Local).AddTicks(1898),
+                            CreatedDate = new DateTime(2022, 10, 23, 7, 16, 43, 772, DateTimeKind.Local).AddTicks(1545),
                             Details = "This is a royal villa.",
                             ImageURL = "",
                             Name = "Royal Villa",
@@ -84,7 +81,7 @@ namespace MagicVilla_VillaAPI.Migrations
                             Id = 2,
                             Amenity = "",
                             AreaInSqFt = 50,
-                            CreatedDate = new DateTime(2022, 10, 9, 22, 31, 38, 496, DateTimeKind.Local).AddTicks(1917),
+                            CreatedDate = new DateTime(2022, 10, 23, 7, 16, 43, 772, DateTimeKind.Local).AddTicks(1561),
                             Details = "This is a soda villa.",
                             ImageURL = "",
                             Name = "Coca Cola Villa",
@@ -97,7 +94,7 @@ namespace MagicVilla_VillaAPI.Migrations
                             Id = 3,
                             Amenity = "",
                             AreaInSqFt = 200,
-                            CreatedDate = new DateTime(2022, 10, 9, 22, 31, 38, 496, DateTimeKind.Local).AddTicks(1919),
+                            CreatedDate = new DateTime(2022, 10, 23, 7, 16, 43, 772, DateTimeKind.Local).AddTicks(1563),
                             Details = "This is the ice cream villa.",
                             ImageURL = "",
                             Name = "Ice Cream Villa",
@@ -105,6 +102,41 @@ namespace MagicVilla_VillaAPI.Migrations
                             Rate = 150.0,
                             UpdatedDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         });
+                });
+
+            modelBuilder.Entity("MagicVilla_VillaAPI.Models.VillaNumber", b =>
+                {
+                    b.Property<int>("VillaNo")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SpecialDetails")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("VillaId")
+                        .HasColumnType("int");
+
+                    b.HasKey("VillaNo");
+
+                    b.HasIndex("VillaId");
+
+                    b.ToTable("VillaNumbers");
+                });
+
+            modelBuilder.Entity("MagicVilla_VillaAPI.Models.VillaNumber", b =>
+                {
+                    b.HasOne("MagicVilla_VillaAPI.Models.Villa", "Villa")
+                        .WithMany()
+                        .HasForeignKey("VillaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Villa");
                 });
 #pragma warning restore 612, 618
         }

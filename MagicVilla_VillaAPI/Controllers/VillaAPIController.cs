@@ -7,6 +7,7 @@ using MagicVilla_VillaAPI.Repository.IRepository;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace MagicVilla_VillaAPI.Controllers
 {
@@ -23,6 +24,8 @@ namespace MagicVilla_VillaAPI.Controllers
 
     public class VillaAPIController : ControllerBase
     {
+
+        private APIResponse _APIResponse;
 
         //private readonly ApplicationDbContext mDbContext;
         private readonly IVillaRepository _villaRepository;
@@ -42,6 +45,7 @@ namespace MagicVilla_VillaAPI.Controllers
             _villaRepository = villaRepository;
             mLogger = logger;
             mMapper = mapper;
+            this._APIResponse = new APIResponse();
 
         }
 
@@ -57,16 +61,34 @@ namespace MagicVilla_VillaAPI.Controllers
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<VillaDTO>>> GetVillas()
+        //public async Task<ActionResult<IEnumerable<VillaDTO>>> GetVillas()
+        public async Task<ActionResult<APIResponse>> GetVillas()
         {
-            mLogger.LogInformation("Getting all villas...");
-            //mLogger.Log("Getting all villas...", "warning");
+            try
+            {
 
-            //return Ok(VillaStore.villaList);
-            IEnumerable<Villa> villaList = await _villaRepository.GetAllVillasAsync();
+                mLogger.LogInformation("Getting all villas...");
+                //mLogger.Log("Getting all villas...", "warning");
 
-            // convert from a list of Villa to a list of VillaDTO
-            return Ok(mMapper.Map<List<VillaDTO>>(villaList));
+                //return Ok(VillaStore.villaList);
+                IEnumerable<Villa> villaList = await _villaRepository.GetAllAsync();
+
+                _APIResponse.Result = mMapper.Map<List<VillaDTO>>(villaList);
+                _APIResponse.IsSuccess = true;
+                _APIResponse.StatusCode = HttpStatusCode.OK;
+
+                // convert from a list of Villa to a list of VillaDTO
+                return Ok(_APIResponse);
+
+            }
+            catch (Exception ex)
+            {
+                _APIResponse.IsSuccess = false;
+                _APIResponse.ErrorMessages = new List<string>() { ex.ToString() };
+
+            }
+
+            return _APIResponse;
 
         }
 
@@ -88,29 +110,46 @@ namespace MagicVilla_VillaAPI.Controllers
         //[ProducesResponseType(200)] 
         //[ProducesResponseType(400)] 
         //[ProducesResponseType(404)] 
-        public async Task<ActionResult<VillaCreateDTO>> GetVilla(int id)
+        public async Task<ActionResult<APIResponse>> GetVilla(int id)
         {
-
-            if( id == 0)
+            try
             {
-                mLogger.LogError("Get Villa Error with id = " + id);
-                //mLogger.Log("Get Villa Error with id = " + id, "error");
 
-                return BadRequest(); // Return Error 400
+                if (id == 0)
+                {
+                    mLogger.LogError("Get Villa Error with id = " + id);
+                    //mLogger.Log("Get Villa Error with id = " + id, "error");
+
+                    _APIResponse.StatusCode = HttpStatusCode.BadRequest;
+                    return BadRequest(_APIResponse); // Return Error 400
+                }
+
+                //var villa = VillaStore.villaList.FirstOrDefault(m => m.Id == id);
+                //var villa = await mDbContext.Villas.FirstOrDefaultAsync(m => m.Id == id);
+                var villa = await _villaRepository.GetAsync(m => m.Id == id, false);
+
+                if (villa == null)
+                {
+                    _APIResponse.StatusCode = HttpStatusCode.NotFound;
+                    return NotFound(_APIResponse); // Return Error 404
+                }
+
+                _APIResponse.Result = mMapper.Map<VillaDTO>(villa);
+                _APIResponse.IsSuccess = true;
+                _APIResponse.StatusCode = HttpStatusCode.OK;
+
+                //return Ok(villa);       // Return OK ( 200 )
+                return Ok(_APIResponse);
+
+            }
+            catch (Exception ex)
+            {
+                _APIResponse.IsSuccess = false;
+                _APIResponse.ErrorMessages = new List<string>() { ex.ToString() };
+
             }
 
-            //var villa = VillaStore.villaList.FirstOrDefault(m => m.Id == id);
-            //var villa = await mDbContext.Villas.FirstOrDefaultAsync(m => m.Id == id);
-            var villa = await _villaRepository.GetVillaAsync(m => m.Id == id);
-
-
-            if (villa == null)
-            {
-                return NotFound(); // Return Error 404
-            }
-
-            //return Ok(villa);       // Return OK ( 200 )
-            return Ok(mMapper.Map<VillaDTO>(villa));
+            return _APIResponse;
 
         }
 
@@ -123,7 +162,7 @@ namespace MagicVilla_VillaAPI.Controllers
 
         // typically, we receive the object that will be created 
         // FROM THE BODY. So we need to add that attribute
-        public async Task<ActionResult<VillaDTO>> CreateVilla ([FromBody] VillaCreateDTO createDTO)
+        public async Task<ActionResult<APIResponse>> CreateVilla ([FromBody] VillaCreateDTO createDTO)
         {
             // Use ModelState for checking if you have CUSTOM VALIDATIONS to be done
             // Comment out the [APICONTROLLER] above attribute if you want to use ModelState checking
@@ -132,47 +171,68 @@ namespace MagicVilla_VillaAPI.Controllers
             //    return BadRequest(ModelState);
             //}
 
-
-            // check if record already exists
-            if(await _villaRepository.GetVillaAsync(m => m.Name.ToLower() == createDTO.Name.ToLower()) != null)
+            try
             {
-                // add custom error message
 
-                ModelState.AddModelError("My Custom Error", "Villa already exists !");
-                return BadRequest(ModelState);
+                // check if record already exists
+                if (await _villaRepository.GetAsync(m => m.Name.ToLower() == createDTO.Name.ToLower()) != null)
+                {
+                    // add custom error message
+
+                    ModelState.AddModelError("My Custom Error", "Villa already exists !");
+                    return BadRequest(ModelState);
+                }
+
+
+                if (createDTO == null)
+                {
+                    return BadRequest(createDTO);
+                }
+
+                Villa villa = mMapper.Map<Villa>(createDTO);
+
+                //Villa model = new()
+                //{
+                //    Amenity = createDTO.Amenity,
+                //    Details = createDTO.Details,
+                //    ImageURL = createDTO.ImageURL,
+                //    Name = createDTO.Name,
+                //    Occupancy = createDTO.Occupancy,
+                //    Rate = createDTO.Rate,
+                //    AreaInSqFt = createDTO.AreaInSqFt
+                //};
+
+                await _villaRepository.CreateAsync(villa);
+
+                _APIResponse.IsSuccess = true;
+                _APIResponse.Result = mMapper.Map<VillaDTO>(villa);
+                _APIResponse.StatusCode = HttpStatusCode.Created;
+
+
+                //return Ok(villa);       // Return OK ( 200 )
+                //return Ok(_APIResponse);
+
+
+                // return the details of the DTO we CREATED.
+                //return Ok(villaDTO);
+
+                // Send a Created Response
+                // return the details by passing the ID to a named route above (GetVilla)
+                // so the caller / user would know the details of the newly-added record
+                // Here, CreatedAtRoute requires us 2x things:
+                //    1. ID of the villa which it will use when it calls "GetVilla" endpoint
+                //    2. The created object which it needs for its own purpose
+                return CreatedAtRoute("GetVilla", new { id = villa.Id }, _APIResponse);
+
+            }
+            catch (Exception ex)
+            {
+                _APIResponse.IsSuccess = false;
+                _APIResponse.ErrorMessages = new List<string>() { ex.ToString() };
+
             }
 
-
-            if(createDTO == null)
-            {
-                return BadRequest(createDTO);
-            }
-
-            Villa model = mMapper.Map<Villa>(createDTO);
-
-            //Villa model = new()
-            //{
-            //    Amenity = createDTO.Amenity,
-            //    Details = createDTO.Details,
-            //    ImageURL = createDTO.ImageURL,
-            //    Name = createDTO.Name,
-            //    Occupancy = createDTO.Occupancy,
-            //    Rate = createDTO.Rate,
-            //    AreaInSqFt = createDTO.AreaInSqFt
-            //};
-
-            await _villaRepository.CreateAsync(model);
-
-            // return the details of the DTO we CREATED.
-            //return Ok(villaDTO);
-
-            // Send a Created Response
-            // return the details by passing the ID to a named route above (GetVilla)
-            // so the caller / user would know the details of the newly-added record
-            // Here, CreatedAtRoute requires us 2x things:
-            //    1. ID of the villa which it will use when it calls "GetVilla" endpoint
-            //    2. The created object which it needs for its own purpose
-            return CreatedAtRoute("GetVilla", new { id = model.Id }, model);
+            return _APIResponse;
 
         }
 
@@ -184,71 +244,109 @@ namespace MagicVilla_VillaAPI.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         // IActionResult here does not have any type because
         // we dont want to return any data after delete
-        public async Task<IActionResult> DeleteVilla(int id)
+        //public async Task<IActionResult> DeleteVilla(int id)
+        public async Task<ActionResult<APIResponse>> DeleteVilla(int id)
         {
-            // check if record already exists
-            if (id == 0)
+
+            try
             {
-      
-                return BadRequest();
+
+                // check if record already exists
+                if (id == 0)
+                {
+
+                    return BadRequest();
+                }
+
+                var villa = await _villaRepository.GetAsync(m => m.Id == id);
+
+                if (villa == null)
+                {
+                    return NotFound();
+                }
+
+                await _villaRepository.RemoveAsync(villa);
+
+                _APIResponse.StatusCode = HttpStatusCode.NoContent;
+                _APIResponse.IsSuccess = true;
+
+                // when we delete, normally we dont want to return anything
+                // but you can also return OK if you want
+                //return NoContent();
+
+                return Ok(_APIResponse);
+
+            } 
+            catch (Exception ex)
+            {
+                _APIResponse.IsSuccess = false;
+                _APIResponse.ErrorMessages = new List<string>() { ex.ToString() };
+
             }
 
-            var villa = await _villaRepository.GetVillaAsync(m => m.Id == id);
+            return _APIResponse;
 
-            if (villa == null)
-            {
-                return NotFound();
-            }
-
-            await _villaRepository.RemoveAsync(villa);
-           
-
-            // when we delete, normally we dont want to return anything
-            // but you can also return OK if you want
-            return NoContent();
-        
         }
 
         // UPDATE ( Update all of the properties in the model )
         [HttpPut("{id:int}", Name = "UpdateVilla")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> UpdateVilla(int id, [FromBody] VillaUpdateDTO updateDTO)
+        public async Task<ActionResult<APIResponse>> UpdateVilla(int id, [FromBody] VillaUpdateDTO updateDTO)
         {
-            if(updateDTO == null || id != updateDTO.Id)
+            try
             {
-                return BadRequest();
+
+                if (updateDTO == null || id != updateDTO.Id)
+                {
+                    return BadRequest();
+                }
+
+
+                // villaDTO is an object which we populated with our DESIRED properties
+                // villa is the object instance connected to the database which will be updated
+                //var villa = VillaStore.villaList.FirstOrDefault(m => m.Id == id);
+                //villa.Name = villaDTO.Name;
+                //villa.AreaInSqFt = villaDTO.AreaInSqFt;
+                //villa.Occupancy = villaDTO.Occupancy;
+
+
+                Villa model = mMapper.Map<Villa>(updateDTO);
+
+
+                // JUST CONVERT THE DTO TO VILLA
+                // AND EF WILL KNOW WHICH TO UPDATE BASED ON THE ID
+                //Villa model = new()
+                //{
+                //    Amenity = updateDTO.Amenity,
+                //    Details = updateDTO.Details,
+                //    Id = updateDTO.Id,
+                //    ImageURL = updateDTO.ImageURL,
+                //    Name = updateDTO.Name,
+                //    Occupancy = updateDTO.Occupancy,
+                //    Rate = updateDTO.Rate,
+                //    AreaInSqFt = updateDTO.AreaInSqFt
+                //};
+
+                await _villaRepository.UpdateAsync(model);
+
+                _APIResponse.StatusCode = HttpStatusCode.NoContent;
+                _APIResponse.IsSuccess = true;
+
+                return _APIResponse;
+
             }
 
+            catch (Exception ex)
+            {
+                _APIResponse.IsSuccess = false;
+                _APIResponse.ErrorMessages = new List<string>() { ex.ToString() };
 
-            // villaDTO is an object which we populated with our DESIRED properties
-            // villa is the object instance connected to the database which will be updated
-            //var villa = VillaStore.villaList.FirstOrDefault(m => m.Id == id);
-            //villa.Name = villaDTO.Name;
-            //villa.AreaInSqFt = villaDTO.AreaInSqFt;
-            //villa.Occupancy = villaDTO.Occupancy;
+            
+            }
 
-
-            Villa model = mMapper.Map<Villa>(updateDTO);
-
-
-            // JUST CONVERT THE DTO TO VILLA
-            // AND EF WILL KNOW WHICH TO UPDATE BASED ON THE ID
-            //Villa model = new()
-            //{
-            //    Amenity = updateDTO.Amenity,
-            //    Details = updateDTO.Details,
-            //    Id = updateDTO.Id,
-            //    ImageURL = updateDTO.ImageURL,
-            //    Name = updateDTO.Name,
-            //    Occupancy = updateDTO.Occupancy,
-            //    Rate = updateDTO.Rate,
-            //    AreaInSqFt = updateDTO.AreaInSqFt
-            //};
-
-            await _villaRepository.UpdateAsync(model);
-      
-            return NoContent();
+            return _APIResponse;
+        
         }
 
 
@@ -311,7 +409,7 @@ namespace MagicVilla_VillaAPI.Controllers
             // But our DB expects a VILLA object so we need to CREATE A NEW VILLA OBJECT and then
             // populate it with the properties of the patchDTO object.
             
-            var villa = await _villaRepository.GetVillaAsync(m => m.Id == id, tracked:false);
+            var villa = await _villaRepository.GetAsync(m => m.Id == id, tracked:false);
 
             // at this point, if villa is not null, then our patchDTO document will have 
             // what needs to be updated. 

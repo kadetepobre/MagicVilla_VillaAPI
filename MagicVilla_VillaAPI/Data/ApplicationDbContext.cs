@@ -38,6 +38,8 @@ namespace MagicVilla_VillaAPI.Data
 
         // The name of this entity will be the name of the TABLE in the Database
         public DbSet<Villa> Villas { get; set; }
+        public DbSet<VillaNumber> VillaNumbers { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -7,75 +7,30 @@ using System.Linq.Expressions;
 
 namespace MagicVilla_VillaAPI.Repository
 {
-    public class VillaRepository : IVillaRepository
+    public class VillaRepository : Repository<Villa>, IVillaRepository
     {
+
+        
         private readonly ApplicationDbContext mDbContext;
 
-        public VillaRepository(ApplicationDbContext dbContext)
+        // NOTE: The DBContext that we receive in this CTOR, we need to pass it 
+        // to REPOSITORY as well, which is the base class here as it also
+        // expects a DBContext
+        public VillaRepository(ApplicationDbContext dbContext) : base(dbContext)
         {
-            mDbContext = dbContext; 
-
+            mDbContext = dbContext;
         }
 
 
-        public async Task CreateAsync(Villa entity)
+        public async Task<Villa> UpdateAsync(Villa entity)
         {
-            await mDbContext.Villas.AddAsync(entity);
-            await SaveAsync();
-        }
-
-        public async Task<Villa> GetVillaAsync(Expression<Func<Villa, bool>> filter = null, bool tracked = true)
-        {
-            IQueryable<Villa> query = mDbContext.Villas;
-
-            if (!tracked)
-            {
-                query = query.AsNoTracking();
-            }
-
-            // When we work on IQueryable, it DOES NOT GET EXECUTED RIGHT AWAY.
-            // So we can build on the query first.
-            if (filter != null)
-            {
-                query = query.Where(filter);
-
-            }
-
-            return await query.FirstOrDefaultAsync(); // Only at this point the query will be executed.
-        
-        }
-
-        public async Task<List<Villa>> GetAllVillasAsync(Expression<Func<Villa, bool>> filter = null)
-        {
-            IQueryable<Villa> query = mDbContext.Villas;
-
-            // When we work on IQueryable, it DOES NOT GET EXECUTED RIGHT AWAY.
-            // So we can build on the query first.
-            
-            if(filter != null)
-            {
-                query = query.Where(filter);
-
-            }
-
-            return await query.ToListAsync(); // Only at this point the query will be executed.
-        }
-
-        public async Task RemoveAsync(Villa entity)
-        {
-            mDbContext.Villas.Remove(entity);
-            await SaveAsync();
-        }
-
-        public async Task UpdateAsync(Villa entity)
-        {
+            entity.UpdatedDate = DateTime.Now;
             mDbContext.Villas.Update(entity);
-            await SaveAsync();
+            await mDbContext.SaveChangesAsync();
+
+            return entity;
         }
 
-        public async Task SaveAsync()
-        {
-            await mDbContext.SaveChangesAsync();
-        }
+      
     }
 }

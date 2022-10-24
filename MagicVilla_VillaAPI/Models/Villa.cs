@@ -9,7 +9,7 @@ namespace MagicVilla_VillaAPI.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)] // Auto-create / increment ID
         public int Id { get; set; }
 
-
+        [Required]
         public string Name { get; set; }
 
         // we dont want this property to be exposed in the API
